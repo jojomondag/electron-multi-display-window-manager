@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Window Manager</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; background-color: #f5f5f5; }
+    .container { max-width: 800px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+    h1 { color: #333; text-align: center; margin-bottom: 30px; }
+    .controls { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
+    button { padding: 10px 20px; background-color: #007acc; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; }
+    button:hover { background-color: #005a9e; }
+    button.danger { background-color: #dc3545; }
+    button.danger:hover { background-color: #c82333; }
+    button.info { background-color: #17a2b8; }
+    button.info:hover { background-color: #138496; }
+    .stats { background-color: #e9ecef; padding: 15px; border-radius: 4px; margin-bottom: 20px; font-family: monospace; }
+    .window-list { margin-top: 20px; }
+    .window-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      padding: 15px;
+      margin: 10px 0;
+      background-color: #f8f9fa;
+      border-radius: 6px;
+      border-left: 4px solid #007acc;
+    }
+    .window-item.main {
+      border-left-color: #28a745;
+    }
+    .window-info {
+      flex-grow: 1;
+    }
+    .window-title {
+      font-weight: bold;
+      margin-bottom: 8px;
+      font-size: 16px;
+    }
+    .window-meta {
+      font-size: 12px;
+      color: #666;
+      line-height: 1.4;
+    }
+    .window-details {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 15px;
+      margin-top: 10px;
+      font-size: 11px;
+      color: #555;
+    }
+    .detail-section {
+      background-color: #ffffff;
+      padding: 8px;
+      border-radius: 4px;
+      border: 1px solid #e9ecef;
+    }
+    .detail-title {
+      font-weight: bold;
+      color: #333;
+      margin-bottom: 4px;
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .detail-item {
+      margin: 2px 0;
+    }
+    .state-indicator {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      margin-right: 5px;
+    }
+    .state-indicator.active { background-color: #28a745; }
+    .state-indicator.maximized { background-color: #ffc107; }
+    .state-indicator.fullscreen { background-color: #dc3545; }
+    .state-indicator.minimized { background-color: #6c757d; }
+    .state-indicator.hidden { background-color: #343a40; }
+    .window-actions { display: flex; gap: 5px; }
+    .window-actions button { padding: 5px 10px; font-size: 12px; }
+    input[type="text"] { padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; }
+    .debug-info {
+      background-color: #f8f9fa;
+      border: 1px solid #dee2e6;
+      border-radius: 4px;
+      padding: 15px;
+      margin-top: 20px;
+      font-family: monospace;
+      font-size: 12px;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+    .hide-details .window-details {
+      display: none;
+    }
+
+    /* Modal styles */
+    .modal {
+      display: none;
+      position: fixed;
+      z-index: 1000;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0,0,0,0.5);
+    }
+    .modal-content {
+      background-color: #fefefe;
+      margin: 15% auto;
+      padding: 20px;
+      border: none;
+      border-radius: 8px;
+      width: 80%;
+      max-width: 400px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    }
+    .modal-header {
+      font-size: 18px;
+      font-weight: bold;
+      margin-bottom: 15px;
+    }
+    .modal-input {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 14px;
+      margin-bottom: 15px;
+      box-sizing: border-box;
+    }
+    .modal-buttons {
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+    }
+    .modal-buttons button {
+      padding: 8px 16px;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🪟 Electron Window Manager</h1>
+    
+
+    
+    <div style="background-color: #e7f3ff; border: 1px solid #b3d9ff; border-radius: 4px; padding: 10px; margin-bottom: 20px; font-size: 14px; color: #0066cc;">
+      <strong>ℹ️ Main Window:</strong> This is the Window Manager interface. Regular windows will show a simplified view with basic window information.
+    </div>
+    
+    <div class="controls">
+      <input type="text" id="newWindowTitle" placeholder="Enter window title..." style="margin-right: 10px;">
+      <button onclick="createWindow()">Create Window</button>
+      <button onclick="copyAllValues()" class="info" style="margin-left: 10px;">📋 Copy All Values</button>
+      <button onclick="toggleDetails()" class="info" id="toggleDetailsBtn">Hide Details</button>
+    </div>
+    
+
+    
+    <div class="window-list">
+      <h3>Active Windows:</h3>
+      <div id="windowList">Loading...</div>
+    </div>
+    
+
+  </div>
+
+  <!-- Rename Modal -->
+  <div id="renameModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">Rename Window</div>
+      <input type="text" id="renameInput" class="modal-input" placeholder="Enter new window title...">
+      <div class="modal-buttons">
+        <button onclick="cancelRename()">Cancel</button>
+        <button onclick="confirmRename()" class="info">Rename</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let windowCounter = 0;
+
+    async function createWindow() {
+      try {
+        windowCounter++;
+        const titleInput = document.getElementById('newWindowTitle');
+        const customTitle = titleInput.value.trim();
+        const title = customTitle || `Test Window ${windowCounter}`;
+        
+        const result = await window.windowManager.createWindow({
+          title: title
+        });
+  
+        
+        // Clear the input field after successful creation
+        titleInput.value = '';
+        
+        await refreshList();
+      } catch (error) {
+        console.error('Error creating window:', error);
+        alert('Failed to create window. Please try again.');
+      }
+    }
+
+
+
+    async function closeWindow(id) {
+      try {
+        const result = await window.windowManager.closeWindow(id);
+
+        await refreshList();
+      } catch (error) {
+        console.error('Error closing window:', error);
+      }
+    }
+
+    // Rename window modal variables
+    let currentRenameWindowId = null;
+    let currentRenameWindowTitle = null;
+
+    async function renameWindow(id, currentTitle) {
+      currentRenameWindowId = id;
+      currentRenameWindowTitle = currentTitle;
+      
+      const modal = document.getElementById('renameModal');
+      const input = document.getElementById('renameInput');
+      
+      input.value = currentTitle;
+      modal.style.display = 'block';
+      input.focus();
+      input.select();
+    }
+
+    function cancelRename() {
+      const modal = document.getElementById('renameModal');
+      modal.style.display = 'none';
+      currentRenameWindowId = null;
+      currentRenameWindowTitle = null;
+    }
+
+    async function confirmRename() {
+      const input = document.getElementById('renameInput');
+      const newTitle = input.value.trim();
+      
+      if (newTitle && newTitle !== currentRenameWindowTitle && newTitle !== '') {
+        try {
+          await window.windowManager.renameWindow(currentRenameWindowId, newTitle);
+          await refreshList();
+
+          cancelRename();
+        } catch (error) {
+          console.error('Error renaming window:', error);
+          alert('Failed to rename window. Please try again.');
+        }
+      } else {
+        cancelRename();
+      }
+    }
+
+    async function copyAllValues() {
+      try {
+        const windows = await window.windowManager.listWindows();
+        
+        if (windows.length === 0) {
+          alert('No windows to copy');
+          return;
+        }
+
+        let output = `Window Manager Export - ${new Date().toLocaleString()}\n`;
+        output += `${'='.repeat(60)}\n\n`;
+
+        windows.forEach((win, index) => {
+          output += `${index + 1}. ${win.title}\n`;
+          output += `   ID: ${win.id}\n`;
+          output += `   Created: ${win.createdAt ? new Date(win.createdAt).toLocaleString() : 'N/A'}\n`;
+          if (win.isMain) output += `   Type: MAIN WINDOW\n`;
+          
+          // Window state
+          const states = [];
+          if (win.state.isMaximized) states.push('Maximized');
+          if (win.state.isFullScreen) states.push('Fullscreen');
+          if (win.state.isMinimized) states.push('Minimized');
+          if (!win.state.isVisible) states.push('Hidden');
+          const stateText = states.length > 0 ? states.join(', ') : 'Normal';
+          output += `   State: ${stateText}\n`;
+          
+          // Window size
+          const resolution = `${win.bounds.width} × ${win.bounds.height}`;
+          const megapixels = (win.bounds.width * win.bounds.height / 1000000).toFixed(1);
+          output += `   Size: ${resolution} (${megapixels}MP)\n`;
+          
+          // Display info
+          const displayName = getDisplayName(win.display);
+          const displayInfo = `${win.display.bounds.width}×${win.display.bounds.height}`;
+          const displayScale = win.display.scaleFactor !== 1 ? ` @${win.display.scaleFactor}x` : '';
+          const displayPosition = `(${win.display.bounds.x}, ${win.display.bounds.y})`;
+          output += `   Display: ${displayName}\n`;
+          output += `   Display Resolution: ${displayInfo}${displayScale}\n`;
+          output += `   Display Position: ${displayPosition}\n`;
+          
+          // Color and rotation info
+          const colorDepth = win.display.colorDepth || 'N/A';
+          const hasColorSpace = win.display.colorSpace && win.display.colorSpace !== 'unknown';
+          const displayDetails = hasColorSpace ? `${colorDepth}-bit ${win.display.colorSpace}` : `${colorDepth}-bit`;
+          const rotation = win.display.rotation || 0;
+          const rotationText = rotation !== 0 ? ` • ${rotation}° rotation` : '';
+          output += `   Color: ${displayDetails}${rotationText}\n`;
+          
+          // Window position
+          const relativePos = `(${win.relativePosition.x}, ${win.relativePosition.y})`;
+          const percentPos = `${win.relativePosition.percentX}%, ${win.relativePosition.percentY}%`;
+          output += `   Position: ${relativePos} (${percentPos} of display)\n`;
+          
+          output += `\n`;
+        });
+
+        // Copy to clipboard using Electron clipboard API
+        const result = await window.windowManager.copyToClipboard(output);
+        
+        if (result.success) {
+          // Show success feedback
+          const buttons = document.querySelectorAll('button');
+          const button = Array.from(buttons).find(btn => btn.textContent.includes('Copy All Values'));
+          if (button) {
+            const originalText = button.textContent;
+            button.textContent = '✅ Copied!';
+            button.style.backgroundColor = '#28a745';
+            
+            setTimeout(() => {
+              button.textContent = originalText;
+              button.style.backgroundColor = '';
+            }, 2000);
+          }
+        } else {
+          throw new Error(result.error || 'Clipboard operation failed');
+        }
+        
+      } catch (error) {
+        console.error('Error copying values:', error);
+        alert('Failed to copy values to clipboard');
+      }
+    }
+
+    async function refreshList() {
+      try {
+        const windows = await window.windowManager.listWindows();
+        const listElement = document.getElementById('windowList');
+        
+        if (windows.length === 0) {
+          listElement.innerHTML = '<p>No windows found.</p>';
+          return;
+        }
+
+        listElement.innerHTML = windows.map(win => {
+          // Format window state
+          const states = [];
+          if (win.state.isMaximized) states.push('Maximized');
+          if (win.state.isFullScreen) states.push('Fullscreen');
+          if (win.state.isMinimized) states.push('Minimized');
+          if (!win.state.isVisible) states.push('Hidden');
+          const stateText = states.length > 0 ? states.join(', ') : 'Normal';
+          
+          // Format resolution
+          const resolution = `${win.bounds.width} × ${win.bounds.height}`;
+          
+          // Format position (relative only)
+          const relativePos = `(${win.relativePosition.x}, ${win.relativePosition.y})`;
+          const percentPos = `${win.relativePosition.percentX}%, ${win.relativePosition.percentY}%`;
+          
+          // Format display info
+          const displayInfo = `${win.display.bounds.width}×${win.display.bounds.height}`;
+          const displayScale = win.display.scaleFactor !== 1 ? ` @${win.display.scaleFactor}x` : '';
+          const displayPosition = `(${win.display.bounds.x}, ${win.display.bounds.y})`;
+          const colorDepth = win.display.colorDepth || 'N/A';
+          const rotation = win.display.rotation || 0;
+          const hasColorSpace = win.display.colorSpace && win.display.colorSpace !== 'unknown';
+          const displayDetails = hasColorSpace ? `${colorDepth}-bit ${win.display.colorSpace}` : `${colorDepth}-bit`;
+          const rotationText = rotation !== 0 ? ` • ${rotation}° rotation` : '';
+          
+          // Determine state indicator class
+          let stateClass = 'active';
+          if (win.state.isFullScreen) stateClass = 'fullscreen';
+          else if (win.state.isMaximized) stateClass = 'maximized';
+          else if (win.state.isMinimized) stateClass = 'minimized';
+          else if (!win.state.isVisible) stateClass = 'hidden';
+
+          return `
+            <div class="window-item ${win.isMain ? 'main' : ''}">
+              <div class="window-info">
+                <div class="window-title">${win.title}</div>
+                <div class="window-meta">
+                  ID: ${win.id} | 
+                  Created: ${win.createdAt ? new Date(win.createdAt).toLocaleString() : 'N/A'}
+                  ${win.isMain ? ' | MAIN WINDOW' : ''}
+                </div>
+                <div class="window-details">
+                  <div class="detail-section">
+                    <div class="detail-title">📺 ${getDisplayName(win.display)}</div>
+                    <div class="detail-item">${displayInfo}${displayScale}</div>
+                    <div class="detail-item" style="color: #888; font-size: 10px;">
+                      Position: ${displayPosition}
+                    </div>
+                    <div class="detail-item" style="color: #888; font-size: 10px;">
+                      ${displayDetails}${rotationText}
+                    </div>
+                  </div>
+                  <div class="detail-section">
+                    <div class="detail-title">Window State</div>
+                    <div class="detail-item">
+                      <span class="state-indicator ${stateClass}"></span>
+                      ${stateText}
+                    </div>
+                  </div>
+                  <div class="detail-section">
+                    <div class="detail-title">Window Size</div>
+                    <div class="detail-item">${resolution}</div>
+                    <div class="detail-item" style="color: #888; font-size: 10px;">
+                      ${(win.bounds.width * win.bounds.height / 1000000).toFixed(1)}MP
+                    </div>
+                  </div>
+                  <div class="detail-section">
+                    <div class="detail-title">Window Position</div>
+                    <div class="detail-item">${relativePos}</div>
+                    <div class="detail-item" style="color: #888; font-size: 10px;">
+                      ${percentPos} of display
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="window-actions">
+                <button class="rename-btn" data-window-id="${win.id}" data-window-title="${win.title.replace(/"/g, '&quot;')}">Rename</button>
+                ${!win.isMain ? `<button class="danger close-btn" data-window-id="${win.id}">Close</button>` : ''}
+              </div>
+            </div>
+          `;
+        }).join('');
+        
+        // Add event listeners for the buttons
+        document.querySelectorAll('.rename-btn').forEach(btn => {
+          btn.addEventListener('click', function() {
+            const windowId = this.getAttribute('data-window-id');
+            const windowTitle = this.getAttribute('data-window-title');
+            renameWindow(windowId, windowTitle);
+          });
+        });
+        
+        document.querySelectorAll('.close-btn').forEach(btn => {
+          btn.addEventListener('click', function() {
+            const windowId = this.getAttribute('data-window-id');
+            closeWindow(windowId);
+          });
+        });
+      } catch (error) {
+        console.error('Error refreshing list:', error);
+        document.getElementById('windowList').innerHTML = '<p>Error loading windows.</p>';
+      }
+    }
+
+
+
+
+
+    function toggleDetails() {
+      const windowListElement = document.getElementById('windowList');
+      const toggleBtn = document.getElementById('toggleDetailsBtn');
+      
+      if (windowListElement.classList.contains('hide-details')) {
+        windowListElement.classList.remove('hide-details');
+        toggleBtn.textContent = 'Hide Details';
+      } else {
+        windowListElement.classList.add('hide-details');
+        toggleBtn.textContent = 'Show Details';
+      }
+    }
+
+
+
+
+
+    function getDisplayName(display) {
+      let displayName = '';
+      
+      // Use manufacturer name if available
+      if (display.realName) {
+        displayName = display.realName;
+      } else if (display.manufacturer && display.model) {
+        displayName = `${display.manufacturer} ${display.model}`;
+      } else if (display.manufacturer) {
+        displayName = display.manufacturer;
+      } else if (display.label && display.label !== `Display ${display.id}`) {
+        displayName = display.label;
+      } else {
+        displayName = `Display ${display.id}`;
+      }
+      
+      // Add primary indicator if applicable
+      if (display.primary) {
+        displayName += ' (Primary)';
+      }
+      
+      return displayName;
+    }
+
+    // Utility function to debounce frequent events
+    function debounce(func, wait) {
+      let timeout;
+      return function executedFunction(...args) {
+        const later = () => {
+          clearTimeout(timeout);
+          func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+      };
+    }
+
+    // Initialize
+    document.addEventListener('DOMContentLoaded', async () => {
+      await refreshList();
+      
+      // Set the document title for the main window
+      try {
+        const currentWindow = await window.windowManager.getCurrentWindowInfo();
+        if (currentWindow && currentWindow.title) {
+          document.title = currentWindow.title;
+        }
+      } catch (error) {
+        // Silently handle error for title setting
+      }
+      
+      // Add keyboard support for title input
+      const titleInput = document.getElementById('newWindowTitle');
+      titleInput.addEventListener('keypress', function(event) {
+        if (event.key === 'Enter') {
+          createWindow();
+        }
+      });
+
+      // Add keyboard support for rename modal
+      const renameInput = document.getElementById('renameInput');
+      renameInput.addEventListener('keypress', function(event) {
+        if (event.key === 'Enter') {
+          confirmRename();
+        }
+      });
+
+      // Add escape key and click-outside support for modal
+      document.addEventListener('keydown', function(event) {
+        if (event.key === 'Escape') {
+          const modal = document.getElementById('renameModal');
+          if (modal.style.display === 'block') {
+            cancelRename();
+          }
+        }
+      });
+
+      document.getElementById('renameModal').addEventListener('click', function(event) {
+        if (event.target === this) {
+          cancelRename();
+        }
+      });
+
+      // Add focus and visibility event listeners for immediate updates
+      window.addEventListener('focus', async () => {
+        await refreshList();
+      });
+
+      document.addEventListener('visibilitychange', async () => {
+        if (!document.hidden) {
+          await refreshList();
+        }
+      });
+
+      // Add click listener to refresh when user clicks in the window
+      document.addEventListener('click', async () => {
+        // Debounce rapid clicks
+        clearTimeout(window.clickRefreshTimeout);
+        window.clickRefreshTimeout = setTimeout(async () => {
+          await refreshList();
+        }, 100);
+      });
+      
+      // Very fast auto-refresh every 200ms for real-time display updates
+      setInterval(async () => {
+        await refreshList();
+      }, 200);
+      
+      // Add additional event listeners for more responsive updates
+      // Listen for mouse movements to catch window drags
+      document.addEventListener('mousemove', debounce(async () => {
+        await refreshList();
+      }, 150));
+      
+      // Listen for mouse button releases (end of window drag)
+      document.addEventListener('mouseup', async () => {
+        await refreshList();
+      });
+      
+      // Listen for key events that might trigger window movements
+      document.addEventListener('keyup', async (event) => {
+        // Windows key combinations that might move windows
+        if (event.key === 'Meta' || event.key === 'Alt' || 
+            (event.ctrlKey && ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.key))) {
+          await refreshList();
+        }
+      });
+    });
+  </script>
+</body>
+</html> 

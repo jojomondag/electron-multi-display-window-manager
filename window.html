@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title></title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+        .window-info {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 30px;
+            text-align: center;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            max-width: 400px;
+            width: 100%;
+        }
+        .window-title {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            color: #fff;
+        }
+        .window-id {
+            font-size: 14px;
+            opacity: 0.8;
+            margin-bottom: 20px;
+            font-family: monospace;
+        }
+        .window-details {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            margin: 10px 0;
+            font-size: 14px;
+        }
+        .detail-label {
+            opacity: 0.8;
+        }
+        .detail-value {
+            font-weight: bold;
+            font-family: monospace;
+        }
+        .manager-link {
+            margin-top: 20px;
+            padding: 10px 20px;
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            border-radius: 8px;
+            color: white;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.3s;
+        }
+        .manager-link:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+        .loading {
+            opacity: 0.6;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <div class="window-info">
+        <div class="window-title" id="windowTitle">Loading...</div>
+        <div class="window-id" id="windowId">Window ID: ...</div>
+        
+        <div class="window-details" id="windowDetails">
+            <div class="loading">Loading window information...</div>
+        </div>
+        
+        <button class="manager-link" onclick="openMainWindow()">
+            Open Window Manager
+        </button>
+    </div>
+
+    <script>
+        let currentWindowInfo = null;
+
+        async function loadWindowInfo() {
+            try {
+                currentWindowInfo = await window.windowManager.getCurrentWindowInfo();
+                
+                if (currentWindowInfo) {
+                    document.getElementById('windowTitle').textContent = currentWindowInfo.title;
+                    document.getElementById('windowId').textContent = `Window ID: ${currentWindowInfo.id}`;
+                    // Update the document title to match the window title
+                    document.title = currentWindowInfo.title;
+                    
+                    // Get detailed window information
+                    const windows = await window.windowManager.listWindows();
+                    const thisWindow = windows.find(w => w.id === currentWindowInfo.id);
+                    
+                    if (thisWindow) {
+                        const detailsHtml = `
+                            <div class="detail-row">
+                                <span class="detail-label">Resolution:</span>
+                                <span class="detail-value">${thisWindow.bounds.width} × ${thisWindow.bounds.height}</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Position:</span>
+                                <span class="detail-value">(${thisWindow.bounds.x}, ${thisWindow.bounds.y})</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Display:</span>
+                                <span class="detail-value">${getDisplayName(thisWindow.display)}</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">State:</span>
+                                <span class="detail-value">${getWindowState(thisWindow.state)}</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Created:</span>
+                                <span class="detail-value">${thisWindow.createdAt ? new Date(thisWindow.createdAt).toLocaleString() : 'N/A'}</span>
+                            </div>
+                        `;
+                        document.getElementById('windowDetails').innerHTML = detailsHtml;
+                    }
+                } else {
+                    document.getElementById('windowTitle').textContent = 'Unknown Window';
+                    document.getElementById('windowId').textContent = 'Window ID: Unknown';
+                    document.getElementById('windowDetails').innerHTML = '<div class="loading">Could not load window information</div>';
+                }
+            } catch (error) {
+                console.error('Error loading window info:', error);
+                document.getElementById('windowDetails').innerHTML = '<div class="loading">Error loading window information</div>';
+            }
+        }
+
+        function getWindowState(state) {
+            const states = [];
+            if (state.isMaximized) states.push('Maximized');
+            if (state.isFullScreen) states.push('Fullscreen');
+            if (state.isMinimized) states.push('Minimized');
+            if (!state.isVisible) states.push('Hidden');
+            return states.length > 0 ? states.join(', ') : 'Normal';
+        }
+
+        function getDisplayName(display) {
+            let displayName = '';
+            
+            // Use manufacturer name if available
+            if (display.realName) {
+                displayName = display.realName;
+            } else if (display.manufacturer && display.model) {
+                displayName = `${display.manufacturer} ${display.model}`;
+            } else if (display.manufacturer) {
+                displayName = display.manufacturer;
+            } else if (display.label && display.label !== `Display ${display.id}`) {
+                displayName = display.label;
+            } else {
+                displayName = `Display ${display.id}`;
+            }
+            
+            // Add primary indicator if applicable
+            if (display.primary) {
+                displayName += ' (Primary)';
+            }
+            
+            return displayName;
+        }
+
+        async function openMainWindow() {
+            try {
+                const focused = await window.windowManager.focusMain();
+                
+                if (!focused) {
+                    // If main window doesn't exist, create it
+                    await window.windowManager.createWindow({
+                        id: 'main',
+                        title: 'Window Manager'
+                    });
+                }
+            } catch (error) {
+                console.error('Error opening main window:', error);
+                alert('Could not open main window. Please check the console for errors.');
+            }
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', async () => {
+            await loadWindowInfo();
+            
+            // Refresh window info every 2 seconds for real-time display updates
+            setInterval(loadWindowInfo, 2000);
+            
+            // Add event listeners for immediate updates when window moves
+            window.addEventListener('focus', loadWindowInfo);
+            window.addEventListener('resize', loadWindowInfo);
+            
+            // Listen for mouse events that might indicate window movement
+            document.addEventListener('mouseup', () => {
+                setTimeout(loadWindowInfo, 100); // Small delay to ensure movement is complete
+            });
+        });
+
+        // Update title when window title changes
+        if (currentWindowInfo && !currentWindowInfo.isMain) {
+            document.title = currentWindowInfo.title || 'Window';
+        }
+    </script>
+</body>
+</html> 
