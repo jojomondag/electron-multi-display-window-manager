@@ -7,8 +7,8 @@
             font-family: Arial, sans-serif;
             margin: 0;
             padding: 20px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
+            background: linear-gradient(135deg, #283618 0%, #606c38 100%);
+            color: #fefae0;
             min-height: 100vh;
             display: flex;
             flex-direction: column;
@@ -16,13 +16,13 @@
             align-items: center;
         }
         .window-info {
-            background: rgba(255, 255, 255, 0.1);
+            background: rgba(254, 250, 224, 0.1);
             backdrop-filter: blur(10px);
             border-radius: 15px;
             padding: 30px;
             text-align: center;
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-            border: 1px solid rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(254, 250, 224, 0.2);
             max-width: 400px;
             width: 100%;
         }
@@ -30,7 +30,7 @@
             font-size: 24px;
             font-weight: bold;
             margin-bottom: 20px;
-            color: #fff;
+            color: #fefae0;
         }
         .window-id {
             font-size: 14px;
@@ -39,7 +39,7 @@
             font-family: monospace;
         }
         .window-details {
-            background: rgba(255, 255, 255, 0.05);
+            background: rgba(254, 250, 224, 0.05);
             border-radius: 10px;
             padding: 20px;
             margin: 20px 0;
@@ -57,20 +57,7 @@
             font-weight: bold;
             font-family: monospace;
         }
-        .manager-link {
-            margin-top: 20px;
-            padding: 10px 20px;
-            background: rgba(255, 255, 255, 0.2);
-            border: none;
-            border-radius: 8px;
-            color: white;
-            cursor: pointer;
-            font-size: 14px;
-            transition: background 0.3s;
-        }
-        .manager-link:hover {
-            background: rgba(255, 255, 255, 0.3);
-        }
+
         .loading {
             opacity: 0.6;
             font-style: italic;
@@ -86,9 +73,7 @@
             <div class="loading">Loading window information...</div>
         </div>
         
-        <button class="manager-link" onclick="openMainWindow()">
-            Open Window Manager
-        </button>
+
     </div>
 
     <script>
@@ -177,22 +162,7 @@
             return displayName;
         }
 
-        async function openMainWindow() {
-            try {
-                const focused = await window.windowManager.focusMain();
-                
-                if (!focused) {
-                    // If main window doesn't exist, create it
-                    await window.windowManager.createWindow({
-                        id: 'main',
-                        title: 'Window Manager'
-                    });
-                }
-            } catch (error) {
-                console.error('Error opening main window:', error);
-                alert('Could not open main window. Please check the console for errors.');
-            }
-        }
+
 
         // Initialize
         document.addEventListener('DOMContentLoaded', async () => {

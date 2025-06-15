@@ -276,6 +276,15 @@ ipcMain.handle('window-manager:get-z-order-info', () => {
   return manager.getZOrderInfo();
 });
 
+// Menu bar visibility IPC handlers
+ipcMain.handle('window-manager:set-menu-bar-visibility', (event, { id, visible }) => {
+  return manager.setWindowMenuBarVisibility(id, visible);
+});
+
+ipcMain.handle('window-manager:get-menu-bar-visibility', (event, id) => {
+  return manager.getWindowMenuBarVisibility(id);
+});
+
 // Clipboard functionality
 ipcMain.handle('clipboard:write-text', (event, text) => {
   try {

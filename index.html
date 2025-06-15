@@ -4,94 +4,223 @@
   <meta charset="UTF-8">
   <title>Window Manager</title>
   <style>
-    body { font-family: Arial, sans-serif; margin: 20px; background-color: #f5f5f5; }
-    .container { max-width: 800px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-    h1 { color: #333; text-align: center; margin-bottom: 30px; }
-    .controls { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
-    button { padding: 10px 20px; background-color: #007acc; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; }
-    button:hover { background-color: #005a9e; }
-    button.danger { background-color: #dc3545; }
-    button.danger:hover { background-color: #c82333; }
-    button.info { background-color: #17a2b8; }
-    button.info:hover { background-color: #138496; }
-    .stats { background-color: #e9ecef; padding: 15px; border-radius: 4px; margin-bottom: 20px; font-family: monospace; }
-    .window-list { margin-top: 20px; }
-    .window-item {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
+    body { 
+      font-family: Arial, sans-serif; 
+      margin: 0; 
+      padding: 20px;
+      background: linear-gradient(135deg, #283618 0%, #606c38 100%);
+      color: #fefae0;
+      min-height: 100vh;
+    }
+    .container { 
+      max-width: 1000px; 
+      margin: 0 auto; 
+      background: rgba(254, 250, 224, 0.1);
+      backdrop-filter: blur(10px);
+      padding: 30px; 
+      border-radius: 15px; 
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+      border: 1px solid rgba(254, 250, 224, 0.2);
+    }
+    h1 { 
+      color: #fefae0; 
+      text-align: center; 
+      margin-bottom: 30px; 
+      font-size: 32px;
+      font-weight: bold;
+      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    }
+    .info-banner {
+      background: rgba(221, 161, 94, 0.2);
+      border: 1px solid rgba(221, 161, 94, 0.4);
+      border-radius: 10px;
       padding: 15px;
-      margin: 10px 0;
-      background-color: #f8f9fa;
-      border-radius: 6px;
-      border-left: 4px solid #007acc;
+      margin-bottom: 25px;
+      font-size: 15px;
+      color: #fefae0;
+      font-weight: 500;
+    }
+    .controls { 
+      display: flex; 
+      gap: 15px; 
+      margin-bottom: 25px; 
+      flex-wrap: wrap; 
+      align-items: center;
+    }
+    button { 
+      padding: 10px 20px; 
+      background: rgba(221, 161, 94, 0.3); 
+      color: #fefae0; 
+      border: 1px solid rgba(221, 161, 94, 0.4); 
+      border-radius: 6px; 
+      cursor: pointer; 
+      font-size: 14px;
+      font-weight: 500;
+    }
+
+    button:hover { 
+      background: rgba(221, 161, 94, 0.5); 
+    }
+
+    button.danger { 
+      background: rgba(188, 108, 37, 0.4); 
+      border-color: rgba(188, 108, 37, 0.5);
+    }
+
+    button.danger:hover { 
+      background: rgba(188, 108, 37, 0.6); 
+    }
+
+    button.info { 
+      background: rgba(96, 108, 56, 0.4); 
+      border-color: rgba(96, 108, 56, 0.5);
+    }
+
+    button.info:hover { 
+      background: rgba(96, 108, 56, 0.6); 
+    }
+
+    .window-list { 
+      margin-top: 25px; 
+    }
+    .window-list h3 {
+      color: #fefae0;
+      margin-bottom: 20px;
+      font-size: 20px;
+      font-weight: bold;
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+    }
+    .window-item {
+      padding: 20px;
+      margin: 15px 0;
+      background: rgba(254, 250, 224, 0.1);
+      backdrop-filter: blur(5px);
+      border-radius: 12px;
+      border: 1px solid rgba(254, 250, 224, 0.2);
+      position: relative;
     }
     .window-item.main {
-      border-left-color: #28a745;
+      border: 1px solid rgba(96, 108, 56, 0.5);
+      background: rgba(96, 108, 56, 0.1);
     }
     .window-info {
-      flex-grow: 1;
+      width: 100%;
+    }
+    .window-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
     }
     .window-title {
       font-weight: bold;
-      margin-bottom: 8px;
-      font-size: 16px;
+      font-size: 18px;
+      color: #fefae0;
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+      flex-grow: 1;
     }
     .window-meta {
-      font-size: 12px;
-      color: #666;
-      line-height: 1.4;
+      font-size: 14px;
+      color: rgba(254, 250, 224, 0.95);
+      line-height: 1.5;
+      font-weight: 400;
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
     }
     .window-details {
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 15px;
-      margin-top: 10px;
-      font-size: 11px;
-      color: #555;
+      margin-top: 15px;
+      font-size: 13px;
+      color: rgba(254, 250, 224, 0.95);
     }
     .detail-section {
-      background-color: #ffffff;
-      padding: 8px;
-      border-radius: 4px;
-      border: 1px solid #e9ecef;
+      background: rgba(254, 250, 224, 0.1);
+      padding: 15px;
+      border-radius: 8px;
+      border: 1px solid rgba(254, 250, 224, 0.2);
     }
     .detail-title {
       font-weight: bold;
-      color: #333;
-      margin-bottom: 4px;
-      font-size: 10px;
+      color: #fefae0;
+      margin-bottom: 8px;
+      font-size: 13px;
       text-transform: uppercase;
       letter-spacing: 0.5px;
+      opacity: 1;
+      text-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
     }
     .detail-item {
-      margin: 2px 0;
+      margin: 4px 0;
+      color: rgba(254, 250, 224, 0.95);
+      font-size: 13px;
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+    }
+    .detail-secondary {
+      color: rgba(254, 250, 224, 0.85) !important;
+      font-size: 12px !important;
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
     }
     .state-indicator {
       display: inline-block;
       width: 8px;
       height: 8px;
       border-radius: 50%;
-      margin-right: 5px;
+      margin-right: 8px;
     }
-    .state-indicator.active { background-color: #28a745; }
-    .state-indicator.maximized { background-color: #ffc107; }
-    .state-indicator.fullscreen { background-color: #dc3545; }
-    .state-indicator.minimized { background-color: #6c757d; }
-    .state-indicator.hidden { background-color: #343a40; }
-    .window-actions { display: flex; gap: 5px; }
-    .window-actions button { padding: 5px 10px; font-size: 12px; }
-    input[type="text"] { padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; }
-    .debug-info {
-      background-color: #f8f9fa;
-      border: 1px solid #dee2e6;
-      border-radius: 4px;
-      padding: 15px;
-      margin-top: 20px;
-      font-family: monospace;
+    .state-indicator.active { background-color: #606c38; }
+    .state-indicator.maximized { background-color: #dda15e; }
+    .state-indicator.fullscreen { background-color: #bc6c25; }
+    .state-indicator.minimized { background-color: #283618; }
+    .state-indicator.hidden { background-color: #283618; }
+    .window-actions { 
+      display: flex; 
+      gap: 8px; 
+      flex-direction: row;
+      flex-shrink: 0;
+    }
+    .window-actions button { 
+      padding: 6px 12px; 
       font-size: 12px;
-      max-height: 300px;
-      overflow-y: auto;
+      min-width: 60px;
+    }
+    .menu-toggle-btn {
+      padding: 6px 12px;
+      font-size: 12px;
+      min-width: 60px;
+      background: rgba(96, 108, 56, 0.4);
+      border-color: rgba(96, 108, 56, 0.5);
+      color: #fefae0;
+    }
+    
+    .menu-toggle-btn:hover {
+      background: rgba(96, 108, 56, 0.6);
+    }
+    
+    .menu-toggle-btn.menu-off {
+      background: rgba(188, 108, 37, 0.4);
+      border-color: rgba(188, 108, 37, 0.5);
+    }
+    
+    .menu-toggle-btn.menu-off:hover {
+      background: rgba(188, 108, 37, 0.6);
+    }
+    input[type="text"] { 
+      padding: 12px; 
+      border: 1px solid rgba(254, 250, 224, 0.3); 
+      border-radius: 8px; 
+      font-size: 14px;
+      background: rgba(254, 250, 224, 0.1);
+      color: #fefae0;
+      backdrop-filter: blur(5px);
+    }
+    input[type="text"]::placeholder {
+      color: rgba(254, 250, 224, 0.6);
+    }
+    input[type="text"]:focus {
+      outline: none;
+      border-color: rgba(254, 250, 224, 0.5);
+      background: rgba(254, 250, 224, 0.15);
     }
     .hide-details .window-details {
       display: none;
@@ -106,39 +235,54 @@
       top: 0;
       width: 100%;
       height: 100%;
-      background-color: rgba(0,0,0,0.5);
+      background-color: rgba(0,0,0,0.7);
+      backdrop-filter: blur(5px);
     }
     .modal-content {
-      background-color: #fefefe;
+      background: rgba(254, 250, 224, 0.1);
+      backdrop-filter: blur(15px);
       margin: 15% auto;
-      padding: 20px;
-      border: none;
-      border-radius: 8px;
+      padding: 30px;
+      border: 1px solid rgba(254, 250, 224, 0.2);
+      border-radius: 15px;
       width: 80%;
       max-width: 400px;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+      color: #fefae0;
     }
     .modal-header {
-      font-size: 18px;
+      font-size: 20px;
       font-weight: bold;
-      margin-bottom: 15px;
+      margin-bottom: 20px;
+      color: #fefae0;
     }
     .modal-input {
       width: 100%;
-      padding: 10px;
-      border: 1px solid #ddd;
-      border-radius: 4px;
+      padding: 12px;
+      border: 1px solid rgba(254, 250, 224, 0.3);
+      border-radius: 8px;
       font-size: 14px;
-      margin-bottom: 15px;
+      margin-bottom: 20px;
       box-sizing: border-box;
+      background: rgba(254, 250, 224, 0.1);
+      color: #fefae0;
+      backdrop-filter: blur(5px);
+    }
+    .modal-input::placeholder {
+      color: rgba(254, 250, 224, 0.6);
+    }
+    .modal-input:focus {
+      outline: none;
+      border-color: rgba(254, 250, 224, 0.5);
+      background: rgba(254, 250, 224, 0.15);
     }
     .modal-buttons {
       display: flex;
-      gap: 10px;
+      gap: 15px;
       justify-content: flex-end;
     }
     .modal-buttons button {
-      padding: 8px 16px;
+      padding: 10px 20px;
       font-size: 14px;
     }
   </style>
@@ -149,8 +293,8 @@
     
 
     
-    <div style="background-color: #e7f3ff; border: 1px solid #b3d9ff; border-radius: 4px; padding: 10px; margin-bottom: 20px; font-size: 14px; color: #0066cc;">
-      <strong>ℹ️ Main Window:</strong> This is the Window Manager interface. Regular windows will show a simplified view with basic window information.
+    <div class="info-banner">
+      <strong>Main Window:</strong> Window Manager interface for managing all windows.
     </div>
     
     <div class="controls">
@@ -195,7 +339,6 @@
         const result = await window.windowManager.createWindow({
           title: title
         });
-  
         
         // Clear the input field after successful creation
         titleInput.value = '';
@@ -323,19 +466,7 @@
         const result = await window.windowManager.copyToClipboard(output);
         
         if (result.success) {
-          // Show success feedback
-          const buttons = document.querySelectorAll('button');
-          const button = Array.from(buttons).find(btn => btn.textContent.includes('Copy All Values'));
-          if (button) {
-            const originalText = button.textContent;
-            button.textContent = '✅ Copied!';
-            button.style.backgroundColor = '#28a745';
-            
-            setTimeout(() => {
-              button.textContent = originalText;
-              button.style.backgroundColor = '';
-            }, 2000);
-          }
+          alert('Values copied to clipboard!');
         } else {
           throw new Error(result.error || 'Clipboard operation failed');
         }
@@ -356,7 +487,18 @@
           return;
         }
 
-        listElement.innerHTML = windows.map(win => {
+        // Get menu bar visibility for all windows
+        const windowsWithMenuStatus = await Promise.all(windows.map(async (win) => {
+          try {
+            const menuBarVisible = await window.windowManager.getMenuBarVisibility(win.id);
+            return { ...win, menuBarVisible };
+          } catch (error) {
+            console.warn(`Could not get menu bar status for window ${win.id}:`, error);
+            return { ...win, menuBarVisible: true }; // Default to visible
+          }
+        }));
+
+        listElement.innerHTML = windowsWithMenuStatus.map(win => {
           // Format window state
           const states = [];
           if (win.state.isMaximized) states.push('Maximized');
@@ -392,7 +534,16 @@
           return `
             <div class="window-item ${win.isMain ? 'main' : ''}">
               <div class="window-info">
-                <div class="window-title">${win.title}</div>
+                <div class="window-header">
+                  <div class="window-title">${win.title}</div>
+                  <div class="window-actions">
+                    <button class="menu-toggle-btn ${win.menuBarVisible === false ? 'menu-off' : ''}" data-window-id="${win.id}">
+                      ${win.menuBarVisible === false ? 'Menu Off' : 'Menu On'}
+                    </button>
+                    <button class="rename-btn" data-window-id="${win.id}" data-window-title="${win.title.replace(/"/g, '&quot;')}">Rename</button>
+                    ${!win.isMain ? `<button class="danger close-btn" data-window-id="${win.id}">Close</button>` : ''}
+                  </div>
+                </div>
                 <div class="window-meta">
                   ID: ${win.id} | 
                   Created: ${win.createdAt ? new Date(win.createdAt).toLocaleString() : 'N/A'}
@@ -402,10 +553,10 @@
                   <div class="detail-section">
                     <div class="detail-title">📺 ${getDisplayName(win.display)}</div>
                     <div class="detail-item">${displayInfo}${displayScale}</div>
-                    <div class="detail-item" style="color: #888; font-size: 10px;">
+                    <div class="detail-item detail-secondary">
                       Position: ${displayPosition}
                     </div>
-                    <div class="detail-item" style="color: #888; font-size: 10px;">
+                    <div class="detail-item detail-secondary">
                       ${displayDetails}${rotationText}
                     </div>
                   </div>
@@ -419,42 +570,24 @@
                   <div class="detail-section">
                     <div class="detail-title">Window Size</div>
                     <div class="detail-item">${resolution}</div>
-                    <div class="detail-item" style="color: #888; font-size: 10px;">
+                    <div class="detail-item detail-secondary">
                       ${(win.bounds.width * win.bounds.height / 1000000).toFixed(1)}MP
                     </div>
                   </div>
                   <div class="detail-section">
                     <div class="detail-title">Window Position</div>
                     <div class="detail-item">${relativePos}</div>
-                    <div class="detail-item" style="color: #888; font-size: 10px;">
+                    <div class="detail-item detail-secondary">
                       ${percentPos} of display
                     </div>
                   </div>
                 </div>
               </div>
-              <div class="window-actions">
-                <button class="rename-btn" data-window-id="${win.id}" data-window-title="${win.title.replace(/"/g, '&quot;')}">Rename</button>
-                ${!win.isMain ? `<button class="danger close-btn" data-window-id="${win.id}">Close</button>` : ''}
-              </div>
             </div>
           `;
         }).join('');
         
-        // Add event listeners for the buttons
-        document.querySelectorAll('.rename-btn').forEach(btn => {
-          btn.addEventListener('click', function() {
-            const windowId = this.getAttribute('data-window-id');
-            const windowTitle = this.getAttribute('data-window-title');
-            renameWindow(windowId, windowTitle);
-          });
-        });
-        
-        document.querySelectorAll('.close-btn').forEach(btn => {
-          btn.addEventListener('click', function() {
-            const windowId = this.getAttribute('data-window-id');
-            closeWindow(windowId);
-          });
-        });
+        // No individual button listeners needed - using event delegation below
       } catch (error) {
         console.error('Error refreshing list:', error);
         document.getElementById('windowList').innerHTML = '<p>Error loading windows.</p>';
@@ -565,7 +698,60 @@
         }
       });
 
-      // Add focus and visibility event listeners for immediate updates
+      // Use event delegation for reliable button clicks that work even after DOM refresh
+      document.addEventListener('click', async function(event) {
+        // Handle rename button clicks
+        if (event.target.classList.contains('rename-btn')) {
+          const windowId = event.target.getAttribute('data-window-id');
+          const windowTitle = event.target.getAttribute('data-window-title');
+          if (windowId && windowTitle) {
+            renameWindow(windowId, windowTitle);
+          }
+          return;
+        }
+        
+        // Handle close button clicks
+        if (event.target.classList.contains('close-btn')) {
+          const windowId = event.target.getAttribute('data-window-id');
+          if (windowId) {
+            closeWindow(windowId);
+          }
+          return;
+        }
+        
+        // Handle menu toggle button clicks
+        if (event.target.classList.contains('menu-toggle-btn')) {
+          const windowId = event.target.getAttribute('data-window-id');
+          const isCurrentlyOff = event.target.classList.contains('menu-off');
+          const newVisible = isCurrentlyOff; // If currently off, turn on
+          
+          if (windowId) {
+            try {
+              await window.windowManager.setMenuBarVisibility(windowId, newVisible);
+              
+              // Update button appearance immediately
+              if (newVisible) {
+                event.target.classList.remove('menu-off');
+                event.target.textContent = 'Menu On';
+              } else {
+                event.target.classList.add('menu-off');
+                event.target.textContent = 'Menu Off';
+              }
+              
+              // Refresh the list after a short delay to get updated state
+              setTimeout(async () => {
+                await refreshList();
+              }, 100);
+              
+            } catch (error) {
+              console.error('Error setting menu bar visibility:', error);
+            }
+          }
+          return;
+        }
+      });
+
+      // Add focus and visibility event listeners for updates
       window.addEventListener('focus', async () => {
         await refreshList();
       });
@@ -576,39 +762,12 @@
         }
       });
 
-      // Add click listener to refresh when user clicks in the window
-      document.addEventListener('click', async () => {
-        // Debounce rapid clicks
-        clearTimeout(window.clickRefreshTimeout);
-        window.clickRefreshTimeout = setTimeout(async () => {
-          await refreshList();
-        }, 100);
-      });
+
       
-      // Very fast auto-refresh every 200ms for real-time display updates
+      // Slower, less aggressive refresh to avoid interfering with button clicks
       setInterval(async () => {
         await refreshList();
-      }, 200);
-      
-      // Add additional event listeners for more responsive updates
-      // Listen for mouse movements to catch window drags
-      document.addEventListener('mousemove', debounce(async () => {
-        await refreshList();
-      }, 150));
-      
-      // Listen for mouse button releases (end of window drag)
-      document.addEventListener('mouseup', async () => {
-        await refreshList();
-      });
-      
-      // Listen for key events that might trigger window movements
-      document.addEventListener('keyup', async (event) => {
-        // Windows key combinations that might move windows
-        if (event.key === 'Meta' || event.key === 'Alt' || 
-            (event.ctrlKey && ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.key))) {
-          await refreshList();
-        }
-      });
+      }, 1000);
     });
   </script>
 </body>

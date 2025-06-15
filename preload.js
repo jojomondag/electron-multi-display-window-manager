@@ -18,6 +18,9 @@ contextBridge.exposeInMainWorld('windowManager', {
   bringToTop: (id) => ipcRenderer.invoke('window-manager:bring-to-top', id),
   setAlwaysOnTop: (id, alwaysOnTop) => ipcRenderer.invoke('window-manager:set-always-on-top', { id, alwaysOnTop }),
   getZOrderInfo: () => ipcRenderer.invoke('window-manager:get-z-order-info'),
+  // Menu bar visibility methods
+  setMenuBarVisibility: (id, visible) => ipcRenderer.invoke('window-manager:set-menu-bar-visibility', { id, visible }),
+  getMenuBarVisibility: (id) => ipcRenderer.invoke('window-manager:get-menu-bar-visibility', id),
   // Clipboard functionality
   copyToClipboard: (text) => ipcRenderer.invoke('clipboard:write-text', text),
 }); 

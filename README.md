@@ -33,7 +33,7 @@ npm start
 ## Usage
 
 1. Launch the application
-2. Create windows with custom titles
+2. Create windows with custom titlesc
 3. Use Windows Snap Layouts or third-party tools normally
 4. Window positions and sizes are automatically saved
 5. Windows restore to exact positions on restart

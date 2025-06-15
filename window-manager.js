@@ -672,6 +672,16 @@ class WindowManager {
           }
         }
         
+        // Restore menu bar visibility if saved
+        if (managed.meta && managed.meta.menuBarVisible !== undefined) {
+          try {
+            win.setMenuBarVisibility(managed.meta.menuBarVisible);
+            console.log(`Restored menu bar visibility for window ${id}: ${managed.meta.menuBarVisible}`);
+          } catch (error) {
+            console.warn(`Could not restore menu bar visibility for window ${id}:`, error);
+          }
+        }
+        
         // Show window after positioning
         win.show();
         
@@ -991,6 +1001,46 @@ class WindowManager {
       return true;
     }
     return false;
+  }
+
+  // Toggle menu bar visibility for a window
+  setWindowMenuBarVisibility(id, visible = true) {
+    const managed = this.windows.get(id);
+    if (!managed || managed.window.isDestroyed()) {
+      console.warn(`Window ${id} not found or destroyed`);
+      return false;
+    }
+
+    try {
+      managed.window.setMenuBarVisibility(visible);
+      console.log(`Window ${id} menu bar visibility set to: ${visible}`);
+      
+      // Save the menu bar state in window metadata
+      if (managed.meta) {
+        managed.meta.menuBarVisible = visible;
+        this.upsertWindowMeta(id, managed.meta);
+      }
+      
+      return true;
+    } catch (error) {
+      console.error(`Error setting menu bar visibility for window ${id}:`, error);
+      return false;
+    }
+  }
+
+  // Get menu bar visibility for a window
+  getWindowMenuBarVisibility(id) {
+    const managed = this.windows.get(id);
+    if (!managed || managed.window.isDestroyed()) {
+      return null;
+    }
+
+    try {
+      return managed.window.isMenuBarVisible();
+    } catch (error) {
+      console.error(`Error getting menu bar visibility for window ${id}:`, error);
+      return null;
+    }
   }
 
   // Get z-order information for all windows
