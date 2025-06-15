@@ -1,5 +1,11 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
+// Listen for refresh requests from the main process
+ipcRenderer.on('refresh-window-list', () => {
+  // Trigger refresh in the renderer process
+  window.dispatchEvent(new CustomEvent('refresh-window-list'));
+});
+
 contextBridge.exposeInMainWorld('windowManager', {
   createWindow: (opts) => ipcRenderer.invoke('window-manager:create', opts),
   closeWindow: (id) => ipcRenderer.invoke('window-manager:close', id),
@@ -18,6 +24,8 @@ contextBridge.exposeInMainWorld('windowManager', {
   bringToTop: (id) => ipcRenderer.invoke('window-manager:bring-to-top', id),
   setAlwaysOnTop: (id, alwaysOnTop) => ipcRenderer.invoke('window-manager:set-always-on-top', { id, alwaysOnTop }),
   getZOrderInfo: () => ipcRenderer.invoke('window-manager:get-z-order-info'),
+  adjustWindowZOrder: (id, adjustment) => ipcRenderer.invoke('window-manager:adjust-z-order', { id, adjustment }),
+  setWindowZOrder: (id, zOrder) => ipcRenderer.invoke('window-manager:set-z-order', { id, zOrder }),
   // Menu bar visibility methods
   setMenuBarVisibility: (id, visible) => ipcRenderer.invoke('window-manager:set-menu-bar-visibility', { id, visible }),
   getMenuBarVisibility: (id) => ipcRenderer.invoke('window-manager:get-menu-bar-visibility', id),

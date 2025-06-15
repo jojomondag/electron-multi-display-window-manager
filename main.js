@@ -276,6 +276,14 @@ ipcMain.handle('window-manager:get-z-order-info', () => {
   return manager.getZOrderInfo();
 });
 
+ipcMain.handle('window-manager:adjust-z-order', (event, { id, adjustment }) => {
+  return manager.adjustWindowZOrder(id, adjustment);
+});
+
+ipcMain.handle('window-manager:set-z-order', (event, { id, zOrder }) => {
+  return manager.setWindowZOrder(id, zOrder);
+});
+
 // Menu bar visibility IPC handlers
 ipcMain.handle('window-manager:set-menu-bar-visibility', (event, { id, visible }) => {
   return manager.setWindowMenuBarVisibility(id, visible);

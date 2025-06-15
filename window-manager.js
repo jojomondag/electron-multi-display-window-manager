@@ -700,6 +700,7 @@ class WindowManager {
       displayId: state.displayId,
       title: meta.title || `Window ${id}`,
       isMain: !!meta.isMain,
+      manualZOrder: options.manualZOrder || null,
     });
 
     // SINGLE SOURCE OF TRUTH: Unified save system
@@ -739,11 +740,38 @@ class WindowManager {
     };
 
     // Z-order tracking - update focus order when window gains focus
+    // TWO-TIER SYSTEM: Manual z-order OR automatic focus-based
     const updateZOrder = () => {
+      // Skip automatic z-order updates for windows with manual z-order
+      if (managed.meta.manualZOrder) {
+        console.log(`[Z-ORDER] Skipping automatic update for window ${id} - using MANUAL z-order ${managed.meta.manualZOrder}`);
+        // IMPORTANT: Re-enforce z-order hierarchy after focus to ensure higher z-order windows stay on top
+        setTimeout(() => this.enforceZOrderHierarchy(), 50);
+        return;
+      }
+      
+      // Apply automatic focus-based z-order for windows WITHOUT manual z-order
       this.zOrderCounter++;
       this.focusOrder.set(id, this.zOrderCounter);
+      console.log(`[Z-ORDER] Applied AUTOMATIC focus-based z-order ${this.zOrderCounter} to window ${id}`);
+      
+      // Re-enforce z-order hierarchy to ensure manual z-orders stay on top
+      setTimeout(() => this.enforceZOrderHierarchy(), 50);
+      
+      // Notify main window to refresh UI if this is a z-order change
+      this.notifyMainWindowToRefresh();
+      
       unifiedSave(true); // Save z-order changes immediately
     };
+
+    // Apply manual z-order if specified
+    if (options.manualZOrder && options.manualZOrder >= 1 && options.manualZOrder <= 100) {
+      // Manual z-orders get super high priority (100000+) - ALWAYS RESPECTED
+      // Higher numbers = higher z-order (more on top)
+      const zOrderValue = 100000 + options.manualZOrder * 1000;
+      this.focusOrder.set(id, zOrderValue);
+      console.log(`Applied MANUAL z-order ${options.manualZOrder} to window ${id} (priority: ${zOrderValue})`);
+    }
 
     // CONSOLIDATED EVENT HANDLERS: Single save system for all events
     // User-initiated state changes - save immediately
@@ -761,6 +789,17 @@ class WindowManager {
     // Focus events - immediate save for z-order
     win.on('focus', updateZOrder);
     win.on('show', updateZOrder);
+    
+    // Additional events to catch when windows come to front and enforce z-order
+    win.on('focus', () => {
+      // Add a small delay to allow the OS to finish its focus handling
+      setTimeout(() => this.enforceZOrderHierarchy(), 100);
+    });
+    
+    win.on('restore', () => {
+      // When a window is restored from minimized, enforce z-order
+      setTimeout(() => this.enforceZOrderHierarchy(), 100);
+    });
 
     this.windows.set(id, managed);
     this.upsertWindowMeta(id, managed.meta);
@@ -855,6 +894,9 @@ class WindowManager {
         createdAt: w.meta.createdAt,
         displayId: w.meta.displayId,
         isMain: !!w.meta.isMain,
+        // Z-order information
+        manualZOrder: w.meta.manualZOrder || null,
+        focusOrder: this.focusOrder.get(w.id) || 0,
         // Current window bounds
         bounds: {
           x: bounds.x,
@@ -936,7 +978,83 @@ class WindowManager {
     return savedCount;
   }
 
-  // Restore z-order for all windows based on saved focus timestamps
+  // Apply z-ordering to all windows to ensure proper stacking
+  applyZOrderToAllWindows() {
+    const windowsWithZOrder = [];
+    
+    for (const [id, managed] of this.windows) {
+      if (!managed.window.isDestroyed()) {
+        const focusOrder = this.focusOrder.get(id) || 0;
+        const manualZOrder = managed.meta.manualZOrder;
+        
+        windowsWithZOrder.push({
+          id,
+          window: managed.window,
+          zOrder: focusOrder,
+          manualZOrder: manualZOrder,
+          isManual: !!manualZOrder
+        });
+      }
+    }
+    
+    // Sort by z-order (lower numbers = further back)
+    windowsWithZOrder.sort((a, b) => a.zOrder - b.zOrder);
+    
+    // Apply z-order by bringing windows to front in order
+    for (const item of windowsWithZOrder) {
+      try {
+        item.window.moveTop();
+      } catch (error) {
+        console.warn(`Failed to apply z-order for window ${item.id}:`, error);
+      }
+    }
+    
+    console.log(`Applied z-order to ${windowsWithZOrder.length} windows`);
+  }
+
+  // Enforce z-order hierarchy - ensures higher z-order windows ALWAYS stay on top
+  enforceZOrderHierarchy() {
+    const windowsWithZOrder = [];
+    
+    for (const [id, managed] of this.windows) {
+      if (!managed.window.isDestroyed()) {
+        const focusOrder = this.focusOrder.get(id) || 0;
+        const manualZOrder = managed.meta.manualZOrder;
+        
+        windowsWithZOrder.push({
+          id,
+          window: managed.window,
+          zOrder: focusOrder,
+          manualZOrder: manualZOrder,
+          isManual: !!manualZOrder,
+          title: managed.meta.title
+        });
+      }
+    }
+    
+    // Sort by z-order (lower numbers = further back)
+    windowsWithZOrder.sort((a, b) => a.zOrder - b.zOrder);
+    
+    // Apply z-order by bringing windows to front in order
+    // This ensures higher z-order values end up on top, even after focus events
+    for (const item of windowsWithZOrder) {
+      try {
+        // Move window to top in the correct order
+        item.window.moveTop();
+        
+        if (item.isManual) {
+          console.log(`[Z-ORDER ENFORCE] Moved manual z-order ${item.manualZOrder} window "${item.title}" to proper position`);
+        }
+      } catch (error) {
+        console.warn(`Failed to enforce z-order for window ${item.id}:`, error);
+      }
+    }
+    
+    console.log(`[Z-ORDER ENFORCE] Enforced hierarchy for ${windowsWithZOrder.length} windows`);
+  }
+
+  // Restore z-order for all windows based on saved focus timestamps and manual z-order
+  // TWO-TIER SYSTEM: Manual z-orders ALWAYS win, automatic for others
   restoreZOrder() {
     // Get all managed windows with their z-order info
     const windowsWithZOrder = [];
@@ -944,10 +1062,26 @@ class WindowManager {
     for (const [id, managed] of this.windows) {
       if (!managed.window.isDestroyed()) {
         const state = this.getWindowState(id, {});
+        const manualZOrder = managed.meta.manualZOrder;
+        
+        // Calculate effective z-order: MANUAL Z-ORDER ALWAYS WINS
+        let effectiveZOrder = state.zOrder || 0;
+        if (manualZOrder && manualZOrder >= 1 && manualZOrder <= 100) {
+          // Manual z-orders get super high priority (100000+)
+          effectiveZOrder = 100000 + manualZOrder * 1000;
+          // Update the focus order to match manual z-order
+          this.focusOrder.set(id, effectiveZOrder);
+          console.log(`[Z-ORDER] Restored MANUAL z-order ${manualZOrder} for window ${id} (priority: ${effectiveZOrder})`);
+        } else {
+          // Windows without manual z-order use automatic focus-based behavior
+          console.log(`[Z-ORDER] Window ${id} will use AUTOMATIC focus-based z-order (current: ${effectiveZOrder})`);
+        }
+        
         windowsWithZOrder.push({
           id,
           window: managed.window,
-          zOrder: state.zOrder || 0,
+          zOrder: effectiveZOrder,
+          manualZOrder: manualZOrder,
           isAlwaysOnTop: state.isAlwaysOnTop || false
         });
       }
@@ -1001,6 +1135,189 @@ class WindowManager {
       return true;
     }
     return false;
+  }
+
+  // Set a window's manual z-order to a specific value
+  setWindowZOrder(id, zOrder) {
+    const managed = this.windows.get(id);
+    if (!managed || managed.window.isDestroyed()) {
+      return false;
+    }
+
+    // Handle empty value - clear manual z-order (back to automatic)
+    if (!zOrder || zOrder === '' || zOrder === null || zOrder === undefined) {
+      return this.clearWindowZOrder(id);
+    }
+
+    const parsedZOrder = parseInt(zOrder);
+    
+    // Handle values below 1 - clear manual z-order (back to automatic)
+    if (parsedZOrder < 1) {
+      console.log(`[Z-ORDER] Value ${parsedZOrder} below 1 - clearing manual z-order for window ${id}`);
+      return this.clearWindowZOrder(id);
+    }
+
+    // Validate z-order value (1-100 range)
+    const newManualZOrder = Math.min(100, parsedZOrder);
+    if (isNaN(newManualZOrder)) {
+      return false;
+    }
+    
+    // Update the manual z-order in metadata - this is PERMANENT
+    managed.meta.manualZOrder = newManualZOrder;
+    this.upsertWindowMeta(id, managed.meta);
+    
+    // Apply the new z-order with HIGH PRIORITY (manual z-orders are always 100000+ in focus order)
+    // This ensures manual z-orders always override automatic ones
+    const zOrderValue = 100000 + newManualZOrder * 1000;
+    this.focusOrder.set(id, zOrderValue);
+    
+    // Enforce z-order hierarchy to ensure proper stacking
+    // This ensures the new z-order is immediately respected
+    this.enforceZOrderHierarchy();
+    
+    // Save the updated state
+    this.saveWindowStateAndMeta(id, managed.window, managed);
+    
+    console.log(`Set MANUAL z-order for window ${id} to ${newManualZOrder} (priority: ${zOrderValue}) - ALWAYS RESPECTED`);
+    return true;
+  }
+
+  // Clear a window's manual z-order (back to automatic)
+  clearWindowZOrder(id) {
+    const managed = this.windows.get(id);
+    if (!managed || managed.window.isDestroyed()) {
+      return false;
+    }
+    
+    // Clear the manual z-order from metadata
+    delete managed.meta.manualZOrder;
+    this.upsertWindowMeta(id, managed.meta);
+    
+    console.log(`[Z-ORDER] Cleared manual z-order for window ${id} - reorganizing ALL windows`);
+    
+    // REORGANIZE ALL WINDOWS: Loop through and organize focus hierarchy
+    this.reorganizeAllWindowsFocus();
+    
+    // Save the updated state
+    this.saveWindowStateAndMeta(id, managed.window, managed);
+    
+    console.log(`[Z-ORDER] Window ${id} back to AUTOMATIC behavior - all windows reorganized`);
+    return true;
+  }
+
+  // Reorganize all windows focus hierarchy - gives proper focus order to all automatic windows
+  reorganizeAllWindowsFocus() {
+    const windowsToOrganize = [];
+    
+    // Collect all windows and categorize them
+    for (const [id, managed] of this.windows) {
+      if (!managed.window.isDestroyed()) {
+        const manualZOrder = managed.meta.manualZOrder;
+        const currentFocusOrder = this.focusOrder.get(id) || 0;
+        
+        windowsToOrganize.push({
+          id,
+          window: managed.window,
+          managed: managed,
+          manualZOrder: manualZOrder,
+          isManual: !!manualZOrder,
+          currentFocusOrder: currentFocusOrder,
+          title: managed.meta.title
+        });
+      }
+    }
+    
+    // Separate manual and automatic windows
+    const manualWindows = windowsToOrganize.filter(w => w.isManual);
+    const automaticWindows = windowsToOrganize.filter(w => !w.isManual);
+    
+    console.log(`[Z-ORDER REORGANIZE] Found ${manualWindows.length} manual windows, ${automaticWindows.length} automatic windows`);
+    
+    // Preserve manual z-orders (they keep their high priority values)
+    for (const manualWindow of manualWindows) {
+      const zOrderValue = 100000 + manualWindow.manualZOrder * 1000;
+      this.focusOrder.set(manualWindow.id, zOrderValue);
+      console.log(`[Z-ORDER REORGANIZE] Preserved manual z-order ${manualWindow.manualZOrder} for "${manualWindow.title}"`);
+    }
+    
+    // Reorganize automatic windows - give them proper sequential focus order
+    // Sort automatic windows by their current focus order (most recent first)
+    automaticWindows.sort((a, b) => b.currentFocusOrder - a.currentFocusOrder);
+    
+    // Assign new sequential focus orders to automatic windows
+    for (let i = 0; i < automaticWindows.length; i++) {
+      const autoWindow = automaticWindows[i];
+      this.zOrderCounter++;
+      const newFocusOrder = this.zOrderCounter;
+      this.focusOrder.set(autoWindow.id, newFocusOrder);
+      
+      console.log(`[Z-ORDER REORGANIZE] Assigned focus order ${newFocusOrder} to automatic window "${autoWindow.title}"`);
+    }
+    
+    // Now focus/organize all windows in proper order
+    this.focusAllWindowsInOrder();
+    
+    // Enforce final hierarchy
+    setTimeout(() => this.enforceZOrderHierarchy(), 100);
+  }
+
+  // Focus all windows in their proper z-order sequence
+  focusAllWindowsInOrder() {
+    const allWindows = [];
+    
+    // Collect all windows with their current focus orders
+    for (const [id, managed] of this.windows) {
+      if (!managed.window.isDestroyed()) {
+        const focusOrder = this.focusOrder.get(id) || 0;
+        allWindows.push({
+          id,
+          window: managed.window,
+          focusOrder: focusOrder,
+          title: managed.meta.title,
+          isManual: !!managed.meta.manualZOrder
+        });
+      }
+    }
+    
+    // Sort by focus order (lowest first, so highest ends up on top)
+    allWindows.sort((a, b) => a.focusOrder - b.focusOrder);
+    
+    console.log(`[Z-ORDER FOCUS] Focusing ${allWindows.length} windows in correct order:`);
+    
+    // Focus each window in sequence with small delays
+    allWindows.forEach((windowInfo, index) => {
+      setTimeout(() => {
+        try {
+          // Focus the window (this brings it to front)
+          windowInfo.window.focus();
+          const orderType = windowInfo.isManual ? 'MANUAL' : 'AUTO';
+          console.log(`[Z-ORDER FOCUS] ${index + 1}. Focused ${orderType} window "${windowInfo.title}" (order: ${windowInfo.focusOrder})`);
+        } catch (error) {
+          console.warn(`Failed to focus window ${windowInfo.id}:`, error);
+        }
+      }, index * 50); // 50ms delay between each focus
+    });
+    
+    // Final enforcement after all focuses complete
+    setTimeout(() => {
+      this.enforceZOrderHierarchy();
+      console.log(`[Z-ORDER FOCUS] Completed focusing sequence for ${allWindows.length} windows`);
+    }, allWindows.length * 50 + 100);
+  }
+
+  // Adjust a window's manual z-order (kept for backward compatibility)
+  adjustWindowZOrder(id, adjustment) {
+    const managed = this.windows.get(id);
+    if (!managed || managed.window.isDestroyed()) {
+      return false;
+    }
+
+    // Get current manual z-order or default to 50 (middle)
+    const currentManualZOrder = managed.meta.manualZOrder || 50;
+    const newManualZOrder = Math.max(1, Math.min(100, currentManualZOrder + adjustment));
+    
+    return this.setWindowZOrder(id, newManualZOrder);
   }
 
   // Toggle menu bar visibility for a window
@@ -1068,6 +1385,19 @@ class WindowManager {
     zOrderInfo.sort((a, b) => b.currentFocusOrder - a.currentFocusOrder);
     
     return zOrderInfo;
+  }
+
+  // Notify main window to refresh UI when z-order changes
+  notifyMainWindowToRefresh() {
+    try {
+      const mainWindow = this.getWindow('main');
+      if (mainWindow && !mainWindow.window.isDestroyed()) {
+        // Send a message to the main window to refresh the window list
+        mainWindow.window.webContents.send('refresh-window-list');
+      }
+    } catch (error) {
+      console.warn('Failed to notify main window to refresh:', error);
+    }
   }
 
   // Get real display manufacturer names using Windows WMI

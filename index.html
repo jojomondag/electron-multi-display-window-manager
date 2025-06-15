@@ -184,6 +184,26 @@
       font-size: 12px;
       min-width: 60px;
     }
+    .zorder-input {
+      width: 70px !important;
+      padding: 6px 8px !important;
+      font-size: 11px !important;
+      margin: 0 4px !important;
+      text-align: center;
+      border: 1px solid rgba(254, 250, 224, 0.3) !important;
+      border-radius: 4px !important;
+      background: rgba(254, 250, 224, 0.1) !important;
+      color: #fefae0 !important;
+    }
+    .zorder-input:focus {
+      outline: none !important;
+      border-color: rgba(254, 250, 224, 0.5) !important;
+      background: rgba(254, 250, 224, 0.15) !important;
+    }
+    .zorder-input::placeholder {
+      color: rgba(254, 250, 224, 0.6) !important;
+      font-size: 10px !important;
+    }
     .menu-toggle-btn {
       padding: 6px 12px;
       font-size: 12px;
@@ -205,7 +225,7 @@
     .menu-toggle-btn.menu-off:hover {
       background: rgba(188, 108, 37, 0.6);
     }
-    input[type="text"] { 
+    input[type="text"], input[type="number"] { 
       padding: 12px; 
       border: 1px solid rgba(254, 250, 224, 0.3); 
       border-radius: 8px; 
@@ -214,10 +234,10 @@
       color: #fefae0;
       backdrop-filter: blur(5px);
     }
-    input[type="text"]::placeholder {
+    input[type="text"]::placeholder, input[type="number"]::placeholder {
       color: rgba(254, 250, 224, 0.6);
     }
-    input[type="text"]:focus {
+    input[type="text"]:focus, input[type="number"]:focus {
       outline: none;
       border-color: rgba(254, 250, 224, 0.5);
       background: rgba(254, 250, 224, 0.15);
@@ -359,6 +379,40 @@
         await refreshList();
       } catch (error) {
         console.error('Error closing window:', error);
+      }
+    }
+
+    async function setZOrder(id, zOrder) {
+      try {
+        // Handle empty string - clear manual z-order
+        if (zOrder === '' || zOrder === null || zOrder === undefined) {
+          await window.windowManager.setWindowZOrder(id, '');
+          await refreshList();
+          return;
+        }
+
+        const zOrderValue = parseInt(zOrder);
+        
+        // Handle invalid numbers (but allow 0 and negative for clearing)
+        if (isNaN(zOrderValue)) {
+          // Reset to current value if truly invalid
+          await refreshList();
+          return;
+        }
+        
+        // Handle values above 100
+        if (zOrderValue > 100) {
+          // Reset to current value if too high
+          await refreshList();
+          return;
+        }
+        
+        // Send the value to backend (including 0 and negative for clearing)
+        await window.windowManager.setWindowZOrder(id, zOrderValue);
+        await refreshList();
+      } catch (error) {
+        console.error('Error setting z-order:', error);
+        await refreshList(); // Reset display on error
       }
     }
 
@@ -540,6 +594,11 @@
                     <button class="menu-toggle-btn ${win.menuBarVisible === false ? 'menu-off' : ''}" data-window-id="${win.id}">
                       ${win.menuBarVisible === false ? 'Menu Off' : 'Menu On'}
                     </button>
+                    <input type="number" class="zorder-input" data-window-id="${win.id}" 
+                           value="${win.manualZOrder || ''}" 
+                           placeholder="Z-Order" 
+                           max="100" 
+                           title="Z-Order (1-100=manual, 0 or below=automatic)">
                     <button class="rename-btn" data-window-id="${win.id}" data-window-title="${win.title.replace(/"/g, '&quot;')}">Rename</button>
                     ${!win.isMain ? `<button class="danger close-btn" data-window-id="${win.id}">Close</button>` : ''}
                   </div>
@@ -579,6 +638,15 @@
                     <div class="detail-item">${relativePos}</div>
                     <div class="detail-item detail-secondary">
                       ${percentPos} of display
+                    </div>
+                  </div>
+                  <div class="detail-section">
+                    <div class="detail-title">Z-Order</div>
+                    <div class="detail-item">
+                      ${win.manualZOrder ? `Manual: ${win.manualZOrder}` : 'Auto'}
+                    </div>
+                    <div class="detail-item detail-secondary">
+                      ${win.manualZOrder ? `Priority: ${win.manualZOrder}/100` : `Focus: ${win.focusOrder || 'Unknown'}`}
                     </div>
                   </div>
                 </div>
@@ -652,6 +720,12 @@
       };
     }
 
+    // Listen for refresh requests from the main process
+    window.addEventListener('refresh-window-list', async () => {
+      console.log('[UI] Received refresh request from backend - updating window list');
+      await refreshList();
+    });
+
     // Initialize
     document.addEventListener('DOMContentLoaded', async () => {
       await refreshList();
@@ -673,6 +747,8 @@
           createWindow();
         }
       });
+
+
 
       // Add keyboard support for rename modal
       const renameInput = document.getElementById('renameInput');
@@ -698,6 +774,24 @@
         }
       });
 
+      // Handle z-order input changes
+      document.addEventListener('change', async function(event) {
+        if (event.target.classList.contains('zorder-input')) {
+          const windowId = event.target.getAttribute('data-window-id');
+          const zOrder = event.target.value;
+          if (windowId) {
+            await setZOrder(windowId, zOrder);
+          }
+        }
+      });
+
+      // Handle z-order input enter key
+      document.addEventListener('keypress', async function(event) {
+        if (event.target.classList.contains('zorder-input') && event.key === 'Enter') {
+          event.target.blur(); // This triggers the change event
+        }
+      });
+
       // Use event delegation for reliable button clicks that work even after DOM refresh
       document.addEventListener('click', async function(event) {
         // Handle rename button clicks
@@ -718,6 +812,8 @@
           }
           return;
         }
+        
+
         
         // Handle menu toggle button clicks
         if (event.target.classList.contains('menu-toggle-btn')) {
