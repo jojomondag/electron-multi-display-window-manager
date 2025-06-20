@@ -6,6 +6,12 @@ A desktop application for advanced multi-display window management with state pe
 
 The Electron Multi Display Window Manager provides a centralized interface for creating, managing, and organizing multiple windows across multiple displays while maintaining their exact state across application restarts. Features full compatibility with Windows native snap layouts and third-party window management tools.
 
+## Example
+
+![Application Screenshot](Repo%20Images/Example%201.png)
+
+*The main window manager interface showing active windows with detailed state information, alongside a managed window displaying its configuration.*
+
 ## Features
 
 - Multi-window management from single interface
