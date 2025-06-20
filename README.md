@@ -1,10 +1,10 @@
-# Electron Window Manager
+# Electron Multi Display Window Manager
 
-A desktop application for advanced window management with state persistence and Windows Snap Layout integration.
+A desktop application for advanced multi-display window management with state persistence and Windows Snap Layout integration.
 
 ## Overview
 
-The Electron Window Manager provides a centralized interface for creating, managing, and organizing multiple windows while maintaining their exact state across application restarts. Features full compatibility with Windows native snap layouts and third-party window management tools.
+The Electron Multi Display Window Manager provides a centralized interface for creating, managing, and organizing multiple windows across multiple displays while maintaining their exact state across application restarts. Features full compatibility with Windows native snap layouts and third-party window management tools.
 
 ## Features
 
@@ -25,7 +25,7 @@ The Electron Window Manager provides a centralized interface for creating, manag
 ### Setup
 ```bash
 git clone <your-repo-url>
-cd electron-window-configurator
+cd electron-multi-display-window-manager
 npm install
 npm start
 ```

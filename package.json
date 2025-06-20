@@ -1,4 +1,6 @@
 {
+  "name": "electron-multi-display-window-manager",
+  "description": "Advanced multi-display window management application with persistent state and snap layout integration",
   "main": "main.js",
   "scripts": {
     "start": "electron ."
